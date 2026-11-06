@@ -1,0 +1,51 @@
+[package]
+name = "vetis-auth"
+version = "0.1.0"
+authors = ["Rogerio Araújo <rogerio.araujo@gmail.com>"]
+edition = "2024"
+repository = "https://github.com/vetis-server/vetis-auth"
+homepage = "https://github.com/vetis-server/vetis-auth"
+description = "Very Tiny Server Auth support"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["http", "modules", "security", "auth"]
+publish = true
+rust-version = "1.85.0"
+
+[features]
+default = ["runtime-tokio", "basic-auth"]
+basic-auth = ["argon2/password-hash", "argon2/alloc", "bcrypt/std", "base64"]
+runtime-tokio = ["dep:tokio"]
+
+[dependencies]
+argon2 = { version = "0.6.0", optional = true, default-features = false }
+base64 = { version = "0.23.1", optional = true, default-features = false }
+bcrypt = { version = "0.19.3", optional = true, default-features = false }
+http = "1.5.0"
+log = "0.4.34"
+serde = "1.0.228"
+tokio = { version = "1.54.1", features = [
+    "io-util",
+], optional = true, default-features = false }
+typetag = "0.2.22"
+vetis = { version = "0.1.7-beta.5" }
+vetis-tokio = { version = "0.1.2-beta.5" }
+
+[dev-dependencies]
+caramelo = "0.1.5"
+deboa = { version = "0.1.5" }
+deboa-tokio = { version = "0.1.4", default-features = false, features = [
+    "http2",
+    "rust-tls",
+    "default-rustls-provider",
+    "default-rustls-verifier",
+] }
+serde_yaml_ng = "0.10.0"
+tokio = { version = "1.54.1", default-features = false, features = ["macros"] }
+vetis-flash = "0.1.0-beta.1"
+vetis-macros = { version = "0.1.3-beta.5" }
+
+[patch.crates-io]
+vetis = { path = "../vetis/vetis" }
+vetis-flash = { path = "../vetis-flash" }
+vetis-tokio = { path = "../vetis-tokio" }
