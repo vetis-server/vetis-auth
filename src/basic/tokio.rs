@@ -4,12 +4,15 @@ use base64::Engine as _;
 use http::{HeaderMap, StatusCode, header};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
-use vetis::{errors::RuntimeError, hook::{ContentHook, PostContentHook, PreProcessHook, RewriteHook}};
+use vetis::{
+    errors::RuntimeError,
+    hook::{ContentHook, PostContentHook, PreProcessHook, RewriteHook},
+};
 use vetis_tokio::{
     Request, VetisFutureResult, VetisResult,
     errors::{HostError, VetisError},
-    host::HostContext,
     hook::{AccessHook, Hook, HookPhase},
+    host::HostContext,
 };
 
 /// BasicAuth holds actual data for basic auth purposes

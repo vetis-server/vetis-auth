@@ -6,7 +6,9 @@ use std::{
     path::{Path, PathBuf},
 };
 use vetis::{
-    VetisHook, VetisResult, errors::{ConfigError, VetisError}, matcher::MatcherConfig,
+    VetisHook, VetisResult,
+    errors::{ConfigError, VetisError},
+    matcher::MatcherConfig,
 };
 
 #[cfg(feature = "runtime-tokio")]
@@ -131,7 +133,7 @@ pub struct HookConfig {
 }
 
 #[typetag::serde(name = "basic_auth")]
-impl vetis::hook::HookConfig for HookConfig {  
+impl vetis::hook::HookConfig for HookConfig {
     fn matchers(&self) -> Option<&Vec<Box<dyn MatcherConfig>>> {
         self.matchers
             .as_ref()
