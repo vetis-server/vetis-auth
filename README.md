@@ -27,30 +27,28 @@ on vetis.
 #### Using API
 
 ```rust,ignore
-use vetis_log::StdoutLogConfig;
-use log::Level;
+use vetis_auth::basic::HookConfig as BasicAuthHookConfig;
 
-let config = StdoutLogConfig::builder()
-    .log_leve(Level::Info)
+let config = BasicAuthHookConfig::builder()
     .build()?;
 ```
 
 #### vetis.yaml
 
 ```yaml
-server:
-  hosts:
-    - hostname: "localhost"
-      modules:
-        - name: "basic_auth"
-          algorithm: "bcrypt"
-          users:
-            "username": "your-bcrypt-hashed-password"
+- name: "basic_auth"
+  matcher:
+    type: "path"
+    paths:
+      - "/protected*"
+  algorithm: "bcrypt"
+  users:
+    "username": "your-bcrypt-hashed-password"
 ```
 
 #### Configuration Options
 
-- **log_level**: Log level: TRACE, WARN, DEBUG, INFO, ERROR and FATAL
+- **matcher**: If set, this hook will be only called if request meet the criteria defined by him, otherwise, all requests will call this hook (optional)
 
 ### Runtime Features
 
