@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use vetis::{
-    VetisHook, VetisResult,
+    Str, VetisHook, VetisResult,
     errors::{ConfigError, VetisError},
     matcher::MatcherConfig,
 };
@@ -32,8 +32,8 @@ pub enum Algorithm {
 
 /// A builder for creating a `BasicAuthConfig`.
 pub struct HookConfigBuilder {
-    users: HashMap<String, String>,
-    realm: Option<String>,
+    users: HashMap<Str, Str>,
+    realm: Option<Str>,
     algorithm: Algorithm,
     htpasswd: Option<PathBuf>,
 }
@@ -44,7 +44,7 @@ impl HookConfigBuilder {
     /// # Returns
     ///
     /// * `Self` - The builder.
-    pub fn users(mut self, users: HashMap<String, String>) -> Self {
+    pub fn users(mut self, users: HashMap<Str, Str>) -> Self {
         self.users = users;
         self
     }
@@ -89,13 +89,13 @@ impl HookConfigBuilder {
             let htpasswd = Path::new(htpasswd);
             if !htpasswd.exists() {
                 return Err(VetisError::Config(ConfigError::Auth(
-                    ".htpasswd file not found".to_string(),
+                    ".htpasswd file not found".into(),
                 )));
             }
         }
 
         Ok(HookConfig {
-            matchers: None,
+            matcher: None,
             users: self.users,
             realm: self.realm,
             algorithm: self.algorithm,
@@ -125,17 +125,17 @@ impl HookConfigBuilder {
 ///     .build();
 /// ```
 pub struct HookConfig {
-    matchers: Option<Vec<Box<dyn MatcherConfig>>>,
-    users: HashMap<String, String>,
-    realm: Option<String>,
+    matcher: Option<Box<dyn MatcherConfig>>,
+    users: HashMap<Str, Str>,
+    realm: Option<Str>,
     algorithm: Algorithm,
     htpasswd: Option<PathBuf>,
 }
 
 #[typetag::serde(name = "basic_auth")]
 impl vetis::hook::HookConfig for HookConfig {
-    fn matchers(&self) -> Option<&Vec<Box<dyn MatcherConfig>>> {
-        self.matchers
+    fn matcher(&self) -> Option<&Box<dyn MatcherConfig>> {
+        self.matcher
             .as_ref()
     }
 
@@ -168,7 +168,7 @@ impl HookConfig {
     /// # Returns
     ///
     /// * `&HashMap<String, String>` - The users.
-    pub fn users(&self) -> &HashMap<String, String> {
+    pub fn users(&self) -> &HashMap<Str, Str> {
         &self.users
     }
 
@@ -186,7 +186,8 @@ impl HookConfig {
     /// # Returns
     ///
     /// * `&Option<PathBuf>` - The path to the htpasswd file.
-    pub fn htpasswd(&self) -> &Option<PathBuf> {
-        &self.htpasswd
+    pub fn htpasswd(&self) -> Option<&PathBuf> {
+        self.htpasswd
+            .as_ref()
     }
 }

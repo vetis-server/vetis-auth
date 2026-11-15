@@ -1,18 +1,20 @@
 use crate::basic::{Algorithm, HookConfig};
 use argon2::{PasswordHash, PasswordVerifier};
 use base64::Engine as _;
+use cel::Context;
+use compact_str::ToCompactString;
 use http::{HeaderMap, StatusCode, header};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 use vetis::{
+    Request, Response, Str,
     errors::RuntimeError,
-    hook::{ContentHook, PostContentHook, PreProcessHook, RewriteHook},
+    hook::{Hook, HookConfig as _, HookPhase},
+    matcher::Matcher,
 };
 use vetis_tokio::{
-    Request, VetisFutureResult, VetisResult,
+    VetisFutureResult, VetisResult,
     errors::{HostError, VetisError},
-    hook::{AccessHook, Hook, HookPhase},
-    host::HostContext,
 };
 
 /// BasicAuth holds actual data for basic auth purposes
@@ -22,66 +24,64 @@ use vetis_tokio::{
 /// If htpasswd file is provided, that will populate
 /// users map only if users map wasn't previously set.
 pub struct BasicAuthHook {
-    users: Arc<RwLock<HashMap<String, String>>>,
+    matcher: Option<Box<dyn Matcher>>,
+    users: Arc<RwLock<HashMap<Str, Str>>>,
     algo: Algorithm,
     htpasswd: Option<PathBuf>,
-    realm: Option<String>,
+    realm: Option<Str>,
 }
+
+unsafe impl Send for BasicAuthHook {}
+unsafe impl Sync for BasicAuthHook {}
 
 impl BasicAuthHook {
     /// Build a new BasicAuth out of its configuration
     pub fn new(config: HookConfig) -> Self {
-        let users = Arc::new(RwLock::new(config.users));
+        let users = Arc::new(RwLock::new(config.users.clone()));
+
         let algo = config
             .algorithm
             .clone();
+
+        let matcher = if let Some(matcher_config) = config.matcher() {
+            Some(matcher_config.boxed_matcher())
+        } else {
+            None
+        };
+
         Self {
+            matcher,
             users,
             algo,
             htpasswd: config
                 .htpasswd
                 .clone(),
-            realm: config.realm.clone(),
+            realm: config
+                .realm
+                .to_owned(),
         }
     }
 }
 
 impl Hook for BasicAuthHook {
-    fn has_matches(&self, _path: &Request) -> bool {
-        true
+    fn has_matches(&self, context: &Context) -> bool {
+        if let Some(matcher) = &self.matcher { matcher.is_match(context) } else { true }
     }
 
     fn phase(&self) -> &HookPhase {
         &HookPhase::Access
     }
 
-    fn as_preprocess_hook(&self) -> Option<&dyn PreProcessHook> {
-        None
+    fn matcher_mut(&mut self) -> Option<&mut Box<dyn Matcher>> {
+        self.matcher
+            .as_mut()
     }
 
-    fn as_rewrite_hook(&self) -> Option<&dyn RewriteHook> {
-        None
-    }
-
-    fn as_access_hook(&self) -> Option<&dyn AccessHook> {
-        Some(self)
-    }
-
-    fn as_content_hook(&self) -> Option<&dyn ContentHook> {
-        None
-    }
-
-    fn as_postcontent_hook(&self) -> Option<&dyn PostContentHook> {
-        None
-    }
-}
-
-impl AccessHook for BasicAuthHook {
-    fn validate(
-        &self,
+    fn handle<'a>(
+        &'a self,
         request: Request,
-        host_context: HostContext,
-    ) -> VetisFutureResult<'static, (Request, HostContext)> {
+        response: Option<Response>,
+    ) -> VetisFutureResult<'a, (Request, Option<Response>)> {
         let users = self.users.clone();
         let algo = self.algo.clone();
         let file = self
@@ -175,7 +175,7 @@ impl AccessHook for BasicAuthHook {
             if let Some(hashed_password) = saved_password {
                 let password = password.to_string();
                 let verify_task = tokio::task::spawn_blocking(move || {
-                    verify_password(password, hashed_password, algo)
+                    verify_password(password, hashed_password.to_string(), algo)
                 })
                 .await;
 
@@ -191,7 +191,7 @@ impl AccessHook for BasicAuthHook {
                 };
 
                 if auth_success {
-                    return Ok((request, host_context));
+                    return Ok((request, response));
                 } else {
                     return Err(common_error);
                 }
@@ -207,7 +207,7 @@ impl AccessHook for BasicAuthHook {
 async fn load_users_from_file(
     file: &PathBuf,
     headers: &HeaderMap,
-) -> VetisResult<HashMap<String, String>> {
+) -> VetisResult<HashMap<Str, Str>> {
     let htpasswd = if file.exists() {
         file
     } else {
@@ -230,10 +230,10 @@ async fn load_users_from_file(
                         users.insert(
                             credentials
                                 .0
-                                .to_string(),
+                                .to_compact_string(),
                             credentials
                                 .1
-                                .to_string(),
+                                .to_compact_string(),
                         );
                     }
                 });
