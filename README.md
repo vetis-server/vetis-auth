@@ -29,21 +29,21 @@ on vetis.
 ```rust,ignore
 use vetis_auth::basic::HookConfig as BasicAuthHookConfig;
 
-let config = BasicAuthHookConfig::builder()
-    .build()?;
+BasicAuthHookConfig::builder()
+  .build()?;
 ```
 
 #### vetis.yaml
 
 ```yaml
-- name: "basic_auth"
-  matcher:
-    type: "path"
-    paths:
-      - "/protected*"
-  algorithm: "bcrypt"
-  users:
-    "username": "your-bcrypt-hashed-password"
+name: "basic_auth"
+matcher:
+  type: "path"
+  paths:
+    - "/protected*"
+algorithm: "bcrypt"
+users:
+  "username": "your-bcrypt-hashed-password"
 ```
 
 #### Configuration Options

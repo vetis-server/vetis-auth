@@ -7,9 +7,10 @@ use http::{HeaderMap, StatusCode, header};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 use vetis::{
-    Request, Response, Str,
+    HookPhases, Request, Response, Str,
     errors::RuntimeError,
     hook::{Hook, HookConfig as _, HookPhase},
+    make_bitflags,
     matcher::Matcher,
 };
 use vetis_tokio::{
@@ -68,8 +69,8 @@ impl Hook for BasicAuthHook {
         if let Some(matcher) = &self.matcher { matcher.is_match(context) } else { true }
     }
 
-    fn phase(&self) -> &HookPhase {
-        &HookPhase::Access
+    fn phases(&self) -> HookPhases {
+        make_bitflags!(HookPhase::Access)
     }
 
     fn matcher_mut(&mut self) -> Option<&mut Box<dyn Matcher>> {
