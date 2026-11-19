@@ -7,10 +7,9 @@ use http::{HeaderMap, StatusCode, header};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 use vetis::{
-    HookPhases, Request, Response, Str,
+    Request, Response, Str,
     errors::RuntimeError,
-    hook::{Hook, HookConfig as _, HookPhase},
-    make_bitflags,
+    hook::{Hook, HookConfig as _, HookPhase, HookPhases},
     matcher::Matcher,
 };
 use vetis_tokio::{
@@ -70,7 +69,7 @@ impl Hook for BasicAuthHook {
     }
 
     fn phases(&self) -> HookPhases {
-        make_bitflags!(HookPhase::Access)
+        HookPhases::new(HookPhase::Access)
     }
 
     fn matcher_mut(&mut self) -> Option<&mut Box<dyn Matcher>> {
