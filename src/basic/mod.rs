@@ -32,6 +32,7 @@ pub enum Algorithm {
 
 /// A builder for creating a `BasicAuthConfig`.
 pub struct HookConfigBuilder {
+    matcher: Option<Box<dyn MatcherConfig>>,
     users: HashMap<Str, Str>,
     realm: Option<Str>,
     algorithm: Algorithm,
@@ -39,6 +40,19 @@ pub struct HookConfigBuilder {
 }
 
 impl HookConfigBuilder {
+    /// Allow set a matcher
+    ///
+    /// # Returns
+    ///
+    /// * `Self` - The builder.
+    pub fn matcher<M>(mut self, matcher: M) -> Self
+    where
+        M: MatcherConfig + 'static,
+    {
+        self.matcher = Some(Box::new(matcher));
+        self
+    }
+
     /// Allow set a hashmap of user and passowrd
     ///
     /// # Returns
@@ -95,7 +109,9 @@ impl HookConfigBuilder {
         }
 
         Ok(HookConfig {
-            matcher: None,
+            matcher: self
+                .matcher
+                .map_or(None, |val| Some(val)),
             users: self.users,
             realm: self.realm,
             algorithm: self.algorithm,
@@ -143,7 +159,7 @@ impl vetis::hook::HookConfig for HookConfig {
         Box::new(self.clone())
     }
 
-    fn boxed_hook(&self) -> Box<dyn VetisHook> {
+    fn boxed_hook<'a>(&'a self) -> Box<dyn VetisHook> {
         Box::new(BasicAuthHook::new(self.clone()))
     }
 }
@@ -156,6 +172,7 @@ impl HookConfig {
     /// * `HookConfigBuilder` - The builder.
     pub fn builder() -> HookConfigBuilder {
         HookConfigBuilder {
+            matcher: None,
             users: HashMap::new(),
             realm: None,
             algorithm: Algorithm::BCrypt,

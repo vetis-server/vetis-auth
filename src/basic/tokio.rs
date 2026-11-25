@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 use vetis::{
     Request, Response, Str,
     errors::RuntimeError,
-    hook::{Hook, HookConfig as _, HookPhase, HookPhases},
+    hook::{Hook, HookConfig as _, HookPhase},
     matcher::Matcher,
 };
 use vetis_tokio::{
@@ -27,8 +27,7 @@ pub struct BasicAuthHook {
     matcher: Option<Box<dyn Matcher>>,
     users: Arc<RwLock<HashMap<Str, Str>>>,
     algo: Algorithm,
-    htpasswd: Option<PathBuf>,
-    realm: Option<Str>,
+    config: HookConfig,
 }
 
 unsafe impl Send for BasicAuthHook {}
@@ -43,33 +42,32 @@ impl BasicAuthHook {
             .algorithm
             .clone();
 
-        let matcher = if let Some(matcher_config) = config.matcher() {
-            Some(matcher_config.boxed_matcher())
-        } else {
-            None
-        };
-
-        Self {
-            matcher,
-            users,
-            algo,
-            htpasswd: config
-                .htpasswd
-                .clone(),
-            realm: config
-                .realm
-                .to_owned(),
-        }
+        BasicAuthHook { matcher: None, users, algo, config }
     }
 }
 
 impl Hook for BasicAuthHook {
+    fn setup<'a>(&'a mut self) -> VetisFutureResult<'a, ()> {
+        Box::pin(async move {
+            let matcher = if let Some(matcher_config) = self
+                .config
+                .matcher()
+            {
+                Some(matcher_config.boxed_matcher())
+            } else {
+                None
+            };
+            self.matcher = matcher;
+            Ok(())
+        })
+    }
+
     fn has_matches(&self, context: &Context) -> bool {
         if let Some(matcher) = &self.matcher { matcher.is_match(context) } else { true }
     }
 
-    fn phases(&self) -> HookPhases {
-        HookPhases::new(HookPhase::Access)
+    fn phase(&self) -> HookPhase {
+        HookPhase::Access
     }
 
     fn matcher_mut(&mut self) -> Option<&mut Box<dyn Matcher>> {
@@ -85,10 +83,10 @@ impl Hook for BasicAuthHook {
         let users = self.users.clone();
         let algo = self.algo.clone();
         let file = self
-            .htpasswd
-            .clone();
+            .config
+            .htpasswd();
 
-        let headers = if let Some(realm) = &self.realm {
+        let headers = if let Some(realm) = &self.config.realm {
             let mut header_map = HeaderMap::new();
             header_map.insert(
                 header::WWW_AUTHENTICATE,
